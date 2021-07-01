@@ -3,6 +3,7 @@ import ImageGallery from "./components/ImageGallery";
 import SearchBar from "./components/SearchBar";
 import Loader from "react-loader-spinner";
 import Button from "./components/Button";
+import Modal from "./components/Modal";
 // import axios from "axios";
 // import newsApi from "./components/services/imagesApi";
 import "./components/styles.css";
@@ -14,7 +15,9 @@ class App extends Component {
     currentPage: 1,
     searchQuery: "",
     isLoading: false,
-    // error: null,
+    error: null,
+    showModal: false,
+    targetImgId: "",
   };
 
   componentDidUpdate(prevProps, prevState) {
@@ -22,15 +25,32 @@ class App extends Component {
       this.fetchImages();
     }
   }
-
+  toggleModal = (id) => {
+    this.setState(({ showModal }) => ({
+      showModal: !showModal,
+      targetImgId: id,
+    }));
+  };
+  getImgInModal = () => {
+    if (this.state.targetImgId) {
+      return this.state.hits.find((hit) => hit.id === this.state.targetImgId);
+    }
+  };
   onChangeQuery = (query) => {
     this.setState({
       searchQuery: query,
       currentPage: 1,
       hits: [],
-      // error: null,
+      error: null,
     });
-    console.log(this.searchQuery);
+    // console.log(this.state.searchQuery);
+  };
+  scroll = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
+    // console.log(document.documentElement.scrollHeight);
   };
 
   fetchImages = () => {
@@ -38,7 +58,7 @@ class App extends Component {
     const options = { searchQuery, currentPage };
 
     this.setState({ isLoader: true });
-
+    // this.scroll();
     imagesApi(options)
       .then((hits) =>
         this.setState((prevState) => ({
@@ -46,32 +66,37 @@ class App extends Component {
           currentPage: prevState.currentPage + 1,
         }))
       )
+      .then(this.scroll)
       .catch((error) => this.setState({ error }))
       .finally(() => this.setState({ isLoading: false }));
   };
-  render() {
-    console.log(this.fetchImages);
-    const { hits, isLoading } = this.state;
-    const shouldRenderLoadMoreButton = hits.length > 0 && !isLoading;
 
+  render() {
+    // console.log(this.fetchImages);
+    const { hits, isLoading, error, showModal } = this.state;
+    const shouldRenderLoadMoreButton = hits.length > 0 && !isLoading;
+    const ModalImg = this.getImgInModal();
     return (
       <div>
-        {/* {error && <h1>Ой ошибка, всё пропало!!!</h1>} */}
+        {error && <h1>Ой ошибка, всё пропало!!!</h1>}
 
         <SearchBar onSubmit={this.onChangeQuery} />
-        <ImageGallery images={hits} />
+        <ImageGallery images={hits} handleOpenModal={this.toggleModal} />
 
         {isLoading && (
+          // <h1>Downloading...</h1>
           <Loader type="TailSpin" color="#00BFFF" height={80} width={80} />
         )}
 
         {shouldRenderLoadMoreButton && (
           <Button handleClick={this.fetchImages} />
         )}
+        {showModal && (
+          <Modal onClose={this.toggleModal} targetImg={ModalImg}></Modal>
+        )}
       </div>
     );
   }
 }
-//Проблемы: 1. не передается запрос в стейт Апп,
-// проблемы с онКликом на кнопке. Модалка и скролл
+
 export default App;
